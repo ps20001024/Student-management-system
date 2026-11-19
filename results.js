@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import Result from '../models/Result.js';
+import Student from '../models/Student.js';
+import { protect, adminOnly } from '../middleware/auth.js';
+const router=Router();router.use(protect);
+router.get('/me',async(req,res,next)=>{try{if(!req.user.student)return res.json([]);res.json(await Result.find({student:req.user.student._id}).populate('course','name code').sort({examDate:-1}));}catch(e){next(e);}});
+router.get('/',adminOnly,async(req,res,next)=>{try{res.json(await Result.find().populate('student','name enrollmentNo').populate('course','name code').sort({examDate:-1}));}catch(e){next(e);}});
+router.post('/',adminOnly,async(req,res,next)=>{try{const {student,subject,examName,marksObtained,maximumMarks,examDate}=req.body;if(!student||!subject||marksObtained===undefined||maximumMarks===undefined)return res.status(400).json({message:'Student, subject, marks obtained and maximum marks are required'});const s=await Student.findById(student);if(!s)return res.status(404).json({message:'Student not found'});res.status(201).json(await Result.create({student,course:s.course,subject,examName,marksObtained:Number(marksObtained),maximumMarks:Number(maximumMarks),examDate}));}catch(e){next(e);}});
+router.delete('/:id',adminOnly,async(req,res,next)=>{try{const r=await Result.findByIdAndDelete(req.params.id);if(!r)return res.status(404).json({message:'Result not found'});res.json({message:'Result deleted'});}catch(e){next(e);}});
+export default router;
